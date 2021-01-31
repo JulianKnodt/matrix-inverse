@@ -1,5 +1,5 @@
 [package]
-name = "mat_inv"
+name = "mat_ops"
 version = "0.1.0"
 authors = ["julianknodt <julianknodt@gmail.com>"]
 edition = "2018"

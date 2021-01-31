@@ -66,6 +66,7 @@ pub fn cofactor(m: &[f32], n: usize, out: &mut [f32]) {
           idx += 1;
         }
       }
+      debug_assert_eq!(idx, sqr!(n-1));
 
       out[i + j * n] = determinant(&buf, n - 1).copysign(if (i + j) % 2 == 0 { 1. } else { -1. });
     }
@@ -226,5 +227,22 @@ pub mod constant {
         }
       }
     }
+  }
+  #[test]
+  fn identity_test() {
+    let mut mat = [0.; 9];
+    for i in 0..3 {
+      mat[i + 3 * i] = 1.;
+    }
+    let det = determinant::<3>(&mat);
+    assert_eq!(det, 1.);
+    let mut out = [0.; 9];
+    invert::<3>(&mat, &mut out);
+    assert_eq!(mat, out);
+
+    out.fill(0.);
+
+    matmul::<3,3,3>(&mat, &mat, &mut out);
+    assert_eq!(mat, out);
   }
 }
