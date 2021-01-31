@@ -73,6 +73,7 @@ pub fn cofactor(m: &[f32], n: usize, out: &mut [f32]) {
   }
 }
 
+/// Transposes x=[n,n] in-place.
 pub fn transpose(x: &mut [f32], n: usize) {
   assert_eq!(x.len(), n * n);
   for i in 0..n {
@@ -82,6 +83,7 @@ pub fn transpose(x: &mut [f32], n: usize) {
   }
 }
 
+/// Inverts x=[n,n] into out=[n,n]
 pub fn invert(x: &[f32], n: usize, out: &mut [f32]) {
   assert_eq!(x.len(), n * n);
   assert_eq!(x.len(), out.len());
@@ -96,6 +98,7 @@ pub fn invert(x: &[f32], n: usize, out: &mut [f32]) {
   }
 }
 
+/// Multiplies l=[i,j] * r=[j*k] into out=[i*k].
 pub fn matmul(l: &[f32], r: &[f32], (i, j, k): (usize, usize, usize), out: &mut [f32]) {
   assert_eq!(l.len(), i * j);
   assert_eq!(r.len(), j * k);
@@ -107,6 +110,29 @@ pub fn matmul(l: &[f32], r: &[f32], (i, j, k): (usize, usize, usize), out: &mut 
       }
     }
   }
+}
+
+/// Randomizes the elements in an array to be between \[0,1\].
+/// Deterministic given the same series of inputs.
+/// Should not be used for crytographic purposes.
+pub fn rand(vs: &mut [f32]) {
+  static mut SEED: f32 = 4.2;
+  for v in vs.iter_mut() {
+    unsafe {
+      *v = (((37882.93 * *v).fract() + SEED).cos() + 1.)/2.;
+      SEED += *v;
+    }
+  }
+}
+
+#[test]
+fn rand_test() {
+  let mut a = [13.; 10];
+  let mut b = [13.; 10];
+  rand(&mut a[..]);
+  // check that it actually modifies the seed between runs
+  rand(&mut b[..]);
+  assert_ne!(a, b);
 }
 
 #[test]
