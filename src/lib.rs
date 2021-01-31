@@ -21,7 +21,7 @@ pub fn determinant(m: &[f32], n: usize) -> f32 {
     _ => {},
   };
   let minor = |i, j| {
-    let mut out = vec![-42.; sqr!(n - 1)];
+    let mut out = vec![0.; sqr!(n - 1)];
     let mut idx = 0;
     for x in 0..n {
       for y in 0..n {
@@ -31,15 +31,19 @@ pub fn determinant(m: &[f32], n: usize) -> f32 {
         }
       }
     }
+    debug_assert_eq!(idx, sqr!(n - 1));
     out
   };
   // just naively do the first row for now
   (0..n)
     .map(|i| {
       let j = 0;
-      let m = minor(i, j);
-      let det = determinant(&m, n - 1);
-      m[i] * det.copysign(if (i + j) % 2 == 0 { 1. } else { -1. })
+      let factor = m[i + j * n];
+      if factor == 0. {
+        return 0.;
+      }
+      let det = determinant(&minor(i, j), n - 1);
+      factor * det.copysign(if (i + j) % 2 == 0 { 1. } else { -1. })
     })
     .sum()
 }
@@ -154,10 +158,13 @@ pub mod constant {
     let mut sum = 0.;
     for i in 0..N {
       let j = 0;
-      let m = minor::<N>(m, i, j);
+      let factor = m[i + j * N];
+      if factor == 0. {
+        return 0.;
+      }
       // can't recurse here because there's no way to demonstrate it doesn't recur forever yet.
-      let det = super::determinant(&m, N - 1);
-      sum += m[i] * det.copysign(if (i + j) % 2 == 0 { 1. } else { -1. })
+      let det = super::determinant(&minor::<N>(m, i, j), N - 1);
+      sum += factor * det.copysign(if (i + j) % 2 == 0 { 1. } else { -1. })
     }
     sum
   }
