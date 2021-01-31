@@ -7,6 +7,10 @@ macro_rules! sqr {
   }};
 }
 
+/// Error when a matrix is singular and thus non-invertible.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct SingularMatrix;
+
 /// Computes the determinant of m of size (n x n), panics if n == 0
 pub fn determinant(m: &[f32], n: usize) -> f32 {
   assert_eq!(m.len(), n * n);
@@ -66,7 +70,7 @@ pub fn cofactor(m: &[f32], n: usize, out: &mut [f32]) {
           idx += 1;
         }
       }
-      debug_assert_eq!(idx, sqr!(n-1));
+      debug_assert_eq!(idx, sqr!(n - 1));
 
       out[i + j * n] = determinant(&buf, n - 1).copysign(if (i + j) % 2 == 0 { 1. } else { -1. });
     }
@@ -84,18 +88,19 @@ pub fn transpose(x: &mut [f32], n: usize) {
 }
 
 /// Inverts x=[n,n] into out=[n,n]
-pub fn invert(x: &[f32], n: usize, out: &mut [f32]) {
+pub fn invert(x: &[f32], n: usize, out: &mut [f32]) -> Result<(), SingularMatrix> {
   assert_eq!(x.len(), n * n);
   assert_eq!(x.len(), out.len());
   let det = determinant(x, n);
   if det.abs() < f32::EPSILON {
-    return;
+    return Err(SingularMatrix);
   }
   cofactor(x, n, out);
   transpose(out, n);
   for v in out.iter_mut() {
     *v /= det;
   }
+  Ok(())
 }
 
 /// Multiplies l=[i,j] * r=[j*k] into out=[i*k].
@@ -119,7 +124,7 @@ pub fn rand(vs: &mut [f32]) {
   static mut SEED: f32 = 4.2;
   for v in vs.iter_mut() {
     unsafe {
-      *v = (((37882.93 * *v).fract() + SEED).cos() + 1.)/2.;
+      *v = (((37882.93 * *v).fract() + SEED).cos() + 1.) / 2.;
       SEED += *v;
     }
   }
@@ -153,7 +158,10 @@ fn identity_test() {
   assert_eq!(mat, out);
 }
 
+/// Module for using generic constants with matrix operations.
+/// Still recursively relies on the above due to limitations on const-generics currently.
 pub mod constant {
+  use super::SingularMatrix;
   fn minor<const N: usize>(m: &[f32; N * N], i: usize, j: usize) -> [f32; (N - 1) * (N - 1)]
   where
     [f32; (N - 1) * (N - 1)]: , {
@@ -222,24 +230,30 @@ pub mod constant {
             idx += 1;
           }
         }
+        debug_assert_eq!(idx, sqr!(N-1));
 
+        // FIXME change to use this modules when possible
         out[i + j * N] =
           super::determinant(&buf, N - 1).copysign(if (i + j) % 2 == 0 { 1. } else { -1. });
       }
     }
   }
-  pub fn invert<const N: usize>(x: &[f32; N * N], out: &mut [f32; N * N])
+  pub fn invert<const N: usize>(
+    x: &[f32; N * N],
+    out: &mut [f32; N * N],
+  ) -> Result<(), SingularMatrix>
   where
     [f32; (N - 1) * (N - 1)]: , {
     let det = determinant::<N>(x);
     if det.abs() < f32::EPSILON {
-      return;
+      return Err(SingularMatrix);
     }
     cofactor::<N>(x, out);
     transpose::<N>(out);
     for v in out.iter_mut() {
       *v /= det;
     }
+    Ok(())
   }
   pub fn matmul<const I: usize, const J: usize, const K: usize>(
     l: &[f32; I * J],
@@ -268,7 +282,7 @@ pub mod constant {
 
     out.fill(0.);
 
-    matmul::<3,3,3>(&mat, &mat, &mut out);
+    matmul::<3, 3, 3>(&mat, &mat, &mut out);
     assert_eq!(mat, out);
   }
 }
